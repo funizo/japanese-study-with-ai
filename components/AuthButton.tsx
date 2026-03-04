@@ -29,6 +29,12 @@ export default function AuthButton() {
   if (user) {
     return (
       <div className="flex items-center gap-2">
+        <Link
+          href="/saved"
+          className="text-xs glass border border-white/10 px-3 py-1.5 rounded-full text-white/60 hover:text-white hover:border-violet-500/50 transition-all duration-200"
+        >
+          🔖 저장 목록
+        </Link>
         <span className="text-xs text-white/50 hidden sm:block max-w-[120px] truncate">
           {user.email}
         </span>

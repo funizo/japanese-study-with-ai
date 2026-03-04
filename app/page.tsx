@@ -10,7 +10,7 @@ const features = [
     icon: "💬",
     title: "AI 회화 연습",
     titleJP: "会話練習",
-    desc: "Gemini AI와 실시간 일본어 대화를 나눠보세요",
+    desc: "AI와 실시간 일본어 대화를 나눠보세요",
     color: "from-pink-500/20 to-rose-600/20",
     border: "border-pink-500/30",
     href: "/chat",
@@ -61,14 +61,14 @@ const features = [
     tag: "기초",
   },
   {
-    id: "translate",
-    icon: "🔄",
-    title: "AI 번역",
-    titleJP: "翻訳",
-    desc: "자연스러운 일본어 번역과 표현 팁을 받아보세요",
-    color: "from-teal-500/20 to-cyan-600/20",
-    border: "border-teal-500/30",
-    href: "/translate",
+    id: "saved",
+    icon: "🔖",
+    title: "저장 목록",
+    titleJP: "保存リスト",
+    desc: "저장한 단어와 문법을 언제든지 복습하세요",
+    color: "from-rose-500/20 to-pink-600/20",
+    border: "border-rose-500/30",
+    href: "/saved",
     tag: "",
   },
 ];
@@ -197,7 +197,7 @@ export default function HomePage() {
             className="text-sm text-white/40 mb-10 leading-relaxed"
             style={{ maxWidth: "36rem", margin: "0 auto 40px" }}
           >
-            Gemini AI가 여러분의 일본어 선생님이 되어드립니다. 회화, 단어, 문법,
+            AI가 여러분의 일본어 선생님이 되어드립니다. 회화, 단어, 문법,
             퀴즈까지 모든 것을 한 곳에서 배우세요.
           </p>
           <div className="flex flex-col sm:flex-row flex-wrap justify-center items-center gap-3">

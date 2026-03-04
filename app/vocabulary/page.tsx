@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase";
 import type { User } from "@supabase/supabase-js";
+import * as wanakana from "wanakana";
 
 const levels = ["N5", "N4", "N3", "N2", "N1"];
 
@@ -30,7 +31,9 @@ const centerStyle = { maxWidth: "42rem", margin: "0 auto", padding: "0 16px" };
 
 export default function VocabularyPage() {
   const [word, setWord] = useState("");
-  const [level, setLevel] = useState("N5");
+  const [searchedWord, setSearchedWord] = useState("");
+  const [searchLevel, setSearchLevel] = useState("N5");
+  const [recLevel, setRecLevel] = useState("N5");
   const [result, setResult] = useState<VocabResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<RecommendedWord[]>([]);
@@ -41,9 +44,17 @@ export default function VocabularyPage() {
   const [saved, setSaved] = useState(false);
 
   const supabase = createClient();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
+  }, []);
+
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    wanakana.bind(el, { IMEMode: true });
+    return () => wanakana.unbind(el);
   }, []);
 
   const fetchRecommendations = async () => {
@@ -57,7 +68,7 @@ export default function VocabularyPage() {
         body: JSON.stringify({
           message: "",
           mode: "recommend-vocabulary",
-          level,
+          level: recLevel,
         }),
       });
       const data = await res.json();
@@ -78,13 +89,18 @@ export default function VocabularyPage() {
     const query = w || word.trim();
     if (!query) return;
     if (!w) setWord(query);
+    setSearchedWord(query);
     setLoading(true);
     setResult(null);
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: query, mode: "vocabulary", level }),
+        body: JSON.stringify({
+          message: query,
+          mode: "vocabulary",
+          level: searchLevel,
+        }),
       });
       const data = await res.json();
       setResult({ raw: data.result });
@@ -100,9 +116,10 @@ export default function VocabularyPage() {
     setSaving(true);
     const { error } = await supabase.from("saved_words").insert({
       user_id: user.id,
-      word: word,
+      word: searchedWord,
       meaning: "",
-      level,
+      level: searchLevel,
+      content: result?.raw ?? "",
     });
     setSaving(false);
     if (!error) setSaved(true);
@@ -170,23 +187,13 @@ export default function VocabularyPage() {
           </h2>
           <div className="flex gap-2 mb-4">
             <input
+              ref={inputRef}
               value={word}
               onChange={(e) => setWord(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && search()}
-              placeholder="예: 食べる, 먹다, 友達..."
+              placeholder="예: taberu → たべる, 食べる, 먹다..."
               className="flex-1 glass border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/30 bg-transparent input-glow font-jp text-base min-w-0"
             />
-            <select
-              value={level}
-              onChange={(e) => setLevel(e.target.value)}
-              className="glass border border-white/20 rounded-xl px-2 py-3 text-white bg-transparent cursor-pointer text-sm flex-shrink-0"
-            >
-              {levels.map((l) => (
-                <option key={l} value={l} className="bg-gray-900">
-                  {l}
-                </option>
-              ))}
-            </select>
             <button
               onClick={() => search()}
               disabled={loading || !word.trim()}
@@ -202,22 +209,39 @@ export default function VocabularyPage() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <span className="text-lg">✨</span>
-              <h3 className="text-sm font-bold text-white">
-                <span className="text-violet-400">{level}</span> 레벨 추천 단어
-              </h3>
+              <h3 className="text-sm font-bold text-white">AI 추천 단어</h3>
             </div>
-            {recommendations.length > 0 && (
-              <button
-                onClick={fetchRecommendations}
-                disabled={recLoading}
-                className="text-xs text-white/40 hover:text-violet-400 transition-colors disabled:opacity-40 flex items-center gap-1"
+            <div className="flex items-center gap-2">
+              <select
+                value={recLevel}
+                onChange={(e) => {
+                  setRecLevel(e.target.value);
+                  setRecommendations([]);
+                  setRecAttempted(false);
+                }}
+                className="glass border border-white/20 rounded-lg px-2 py-1.5 text-white bg-transparent cursor-pointer text-xs"
               >
-                <span className={recLoading ? "animate-spin inline-block" : ""}>
-                  ↺
-                </span>
-                다시 추천
-              </button>
-            )}
+                {levels.map((l) => (
+                  <option key={l} value={l} className="bg-gray-900">
+                    {l}
+                  </option>
+                ))}
+              </select>
+              {recommendations.length > 0 && (
+                <button
+                  onClick={fetchRecommendations}
+                  disabled={recLoading}
+                  className="text-xs text-white/40 hover:text-violet-400 transition-colors disabled:opacity-40 flex items-center gap-1"
+                >
+                  <span
+                    className={recLoading ? "animate-spin inline-block" : ""}
+                  >
+                    ↺
+                  </span>
+                  다시 추천
+                </button>
+              )}
+            </div>
           </div>
 
           {recommendations.length === 0 && !recLoading && (
@@ -240,7 +264,7 @@ export default function VocabularyPage() {
                 ))}
               </div>
               <span className="text-white/40 text-sm">
-                AI가 {level} 레벨 단어를 추천 중...
+                AI가 {recLevel} 레벨 단어를 추천 중...
               </span>
             </div>
           )}
@@ -317,9 +341,9 @@ export default function VocabularyPage() {
             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-white/10">
               <span className="text-xl">📖</span>
               <h3 className="text-white font-bold text-sm">
-                &apos;{word}&apos; 학습 결과
+                &apos;{searchedWord}&apos; 학습 결과
               </h3>
-              <span className="level-badge text-white">{level}</span>
+              {/* <span className="level-badge text-white">{searchLevel}</span> */}
               {user ? (
                 <button
                   onClick={() => {

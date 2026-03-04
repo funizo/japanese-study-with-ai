@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, Suspense } from "react";
 import Link from "next/link";
+import * as wanakana from "wanakana";
 
 interface Message {
   role: "user" | "assistant";
@@ -28,8 +29,16 @@ function ChatContent() {
     },
   ]);
   const [input, setInput] = useState("");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    wanakana.bind(el, { IMEMode: true });
+    return () => wanakana.unbind(el);
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -203,6 +212,7 @@ function ChatContent() {
         <div style={{ ...centerStyle, padding: "12px 16px" }}>
           <div className="flex gap-2 items-end">
             <textarea
+              ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
@@ -211,7 +221,7 @@ function ChatContent() {
                   sendMessage();
                 }
               }}
-              placeholder="일본어나 한국어로 입력하세요..."
+              placeholder="로마자 입력시 자동변환 (taberu → たべる) | Shift+Enter 줄바꿈"
               className="flex-1 glass border border-white/20 rounded-xl px-4 py-3 text-sm text-white placeholder-white/30 bg-transparent resize-none input-glow font-jp"
               rows={2}
             />
