@@ -45,7 +45,8 @@ function ChatContent() {
   }, [messages]);
 
   const sendMessage = async (text?: string) => {
-    const messageText = text || input.trim();
+    const messageText =
+      text || textareaRef.current?.value.trim() || input.trim();
     if (!messageText || loading) return;
 
     const userMessage: Message = {

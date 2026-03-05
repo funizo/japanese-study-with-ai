@@ -16,3 +16,4 @@ export async function sendMessage(prompt: string): Promise<string> {
     throw new Error("AI 응답을 가져오는 데 실패했습니다.");
   }
 }
+  

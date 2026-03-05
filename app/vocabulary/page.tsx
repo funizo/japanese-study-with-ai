@@ -86,7 +86,7 @@ export default function VocabularyPage() {
   };
 
   const search = async (w?: string) => {
-    const query = w || word.trim();
+    const query = w || inputRef.current?.value.trim() || word.trim();
     if (!query) return;
     if (!w) setWord(query);
     setSearchedWord(query);
@@ -194,6 +194,17 @@ export default function VocabularyPage() {
               placeholder="예: taberu → たべる, 食べる, 먹다..."
               className="flex-1 glass border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/30 bg-transparent input-glow font-jp text-base min-w-0"
             />
+            <select
+              value={searchLevel}
+              onChange={(e) => setSearchLevel(e.target.value)}
+              className="glass border border-white/20 rounded-xl px-2 py-3 text-white bg-transparent cursor-pointer text-sm flex-shrink-0"
+            >
+              {levels.map((l) => (
+                <option key={l} value={l} className="bg-gray-900">
+                  {l}
+                </option>
+              ))}
+            </select>
             <button
               onClick={() => search()}
               disabled={loading || !word.trim()}
@@ -276,6 +287,7 @@ export default function VocabularyPage() {
                   key={i}
                   onClick={() => {
                     setWord(rec.word);
+                    setSearchLevel(recLevel);
                     search(rec.word);
                   }}
                   className="flex items-center gap-3 p-3 glass rounded-xl border border-white/10 hover:border-violet-500/50 transition-all duration-200 group text-left w-full active:scale-[0.98]"

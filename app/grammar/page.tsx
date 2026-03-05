@@ -82,7 +82,7 @@ export default function GrammarPage() {
   };
 
   const search = async (g?: string) => {
-    const query = g || grammar.trim();
+    const query = g || inputRef.current?.value.trim() || grammar.trim();
     if (!query) return;
     if (!g) setGrammar(query);
     setSearchedGrammar(query);
@@ -207,6 +207,17 @@ export default function GrammarPage() {
               placeholder="예: te iru → ている, ~たら, 진행형..."
               className="flex-1 glass border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/30 bg-transparent input-glow font-jp text-sm min-w-0"
             />
+            <select
+              value={searchLevel}
+              onChange={(e) => setSearchLevel(e.target.value)}
+              className="glass border border-white/20 rounded-xl px-2 py-3 text-white bg-transparent cursor-pointer text-sm flex-shrink-0"
+            >
+              {levels.map((l) => (
+                <option key={l} value={l} className="bg-gray-900">
+                  {l}
+                </option>
+              ))}
+            </select>
             <button
               onClick={() => search()}
               disabled={loading || !grammar.trim()}
@@ -290,6 +301,7 @@ export default function GrammarPage() {
                   key={i}
                   onClick={() => {
                     setGrammar(rec.pattern);
+                    setSearchLevel(recLevel);
                     search(rec.pattern);
                   }}
                   className="flex items-start gap-3 p-3 glass rounded-xl border border-white/10 hover:border-blue-500/50 transition-all duration-200 group text-left w-full active:scale-[0.98]"
