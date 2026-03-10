@@ -288,7 +288,7 @@ export default function HomePage() {
               return (
                 <Link
                   key={level}
-                  href="/chat"
+                  href={`/learn/${level}`}
                   className={`card-hover bg-gradient-to-br ${colors[i]} rounded-2xl p-3 text-center shadow-lg`}
                 >
                   <div className="text-lg sm:text-2xl font-black text-white mb-0.5">

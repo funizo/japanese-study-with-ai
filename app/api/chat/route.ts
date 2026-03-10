@@ -71,6 +71,35 @@ answer는 0부터 시작하는 인덱스입니다.`;
   {"pattern": "문법패턴", "meaning": "한국어의미", "example": "짧은예문", "difficulty": "난이도"}
 ]
 difficulty는 필수/중요/심화 중 하나입니다. ${level} 레벨에 적합한 문법만 선택하세요.`;
+    } else if (mode === "level-words") {
+      systemPrompt = `JLPT ${level} 수험생이 반드시 알아야 할 핵심 단어 50개를 선정해주세요.
+다음 JSON 배열 형식으로만 응답하세요 (마크다운, 코드블록 없이 순수 JSON만):
+[
+  {
+    "word": "일본어 단어(한자 포함)",
+    "reading": "히라가나 읽기",
+    "meaning": "한국어 뜻",
+    "category": "품사(동사/명사/い형용사/な형용사/부사/표현)",
+    "example": "짧은 예문(일본어)",
+    "example_kr": "예문 한국어 번역"
+  }
+]
+반드시 50개를 채워주세요. ${level} 레벨 기준에 충실하게, 실제 시험에 자주 나오는 단어 위주로 선정하세요.`;
+    } else if (mode === "level-grammar") {
+      systemPrompt = `JLPT ${level} 수험생이 반드시 알아야 할 핵심 문법 10개를 선정해주세요.
+다음 JSON 배열 형식으로만 응답하세요 (마크다운, 코드블록 없이 순수 JSON만):
+[
+  {
+    "pattern": "문법 패턴(예: 〜ている)",
+    "meaning": "한국어 의미/용법",
+    "usage": "접속 방법(예: 동사て형 + いる)",
+    "example": "예문(일본어)",
+    "example_reading": "예문 히라가나",
+    "example_kr": "예문 한국어 번역",
+    "difficulty": "필수/중요/심화 중 하나"
+  }
+]
+반드시 10개를 채워주세요. ${level} 레벨에서 출제 빈도가 높은 문법 위주로 선정하세요.`;
     }
 
     const response = await sendMessage(systemPrompt);
