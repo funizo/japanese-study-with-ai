@@ -194,7 +194,7 @@ export default function VocabularyPage() {
               placeholder="예: taberu → たべる, 食べる, 먹다..."
               className="flex-1 glass border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/30 bg-transparent input-glow font-jp text-base min-w-0"
             />
-            <select
+            {/* <select
               value={searchLevel}
               onChange={(e) => setSearchLevel(e.target.value)}
               className="glass border border-white/20 rounded-xl px-2 py-3 text-white bg-transparent cursor-pointer text-sm flex-shrink-0"
@@ -204,7 +204,7 @@ export default function VocabularyPage() {
                   {l}
                 </option>
               ))}
-            </select>
+            </select> */}
             <button
               onClick={() => search()}
               disabled={loading || !word.trim()}

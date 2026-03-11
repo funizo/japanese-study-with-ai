@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase";
+import type { User } from "@supabase/supabase-js";
 
 interface Word {
   word: string;
@@ -77,7 +78,6 @@ const categoryColors: Record<string, string> = {
 
 const centerStyle = { maxWidth: "42rem", margin: "0 auto", padding: "0 16px" };
 
-// 한국 날짜 (UTC+9)
 function kstToday() {
   return new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().split("T")[0];
 }
@@ -88,6 +88,7 @@ export default function LearnPage() {
   const supabase = createClient();
   const level = (params?.level as string)?.toUpperCase() || "N5";
 
+  const [user, setUser] = useState<User | null>(null);
   const [tab, setTab] = useState<"words" | "grammar">("words");
   const [words, setWords] = useState<Word[]>([]);
   const [grammar, setGrammar] = useState<Grammar[]>([]);
@@ -98,30 +99,29 @@ export default function LearnPage() {
     null,
   );
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  // 저장 상태: key = "word-{i}" | "grammar-{i}"
+  const [savingMap, setSavingMap] = useState<
+    Record<string, "idle" | "saving" | "saved">
+  >({});
 
   const info = levelInfo[level];
 
   useEffect(() => {
     if (!levelInfo[level]) router.push("/");
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
   }, [level]);
 
-  // 최초 단어 로드
   useEffect(() => {
     loadWords();
   }, [level]);
-
-  // 탭 전환 시 문법 로드
   useEffect(() => {
     if (tab === "grammar" && grammar.length === 0) loadGrammar();
   }, [tab]);
 
-  /** 캐시 조회 → 없으면 AI 생성 후 저장 */
   async function loadWords() {
     setWordsLoading(true);
     setWords([]);
     const today = kstToday();
-
-    // 1. 캐시 조회
     const { data: cached } = await supabase
       .from("daily_content")
       .select("content")
@@ -129,15 +129,12 @@ export default function LearnPage() {
       .eq("type", "words")
       .eq("date", today)
       .maybeSingle();
-
     if (cached?.content) {
       setWords(cached.content as Word[]);
       setWordsSource("cache");
       setWordsLoading(false);
       return;
     }
-
-    // 2. AI 실시간 생성
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -150,13 +147,9 @@ export default function LearnPage() {
         const parsed: Word[] = JSON.parse(match[0]);
         setWords(parsed);
         setWordsSource("ai");
-        // 3. Supabase에 저장 (이후 방문자는 캐시 사용)
-        await supabase.from("daily_content").insert({
-          level,
-          type: "words",
-          content: parsed,
-          date: today,
-        });
+        await supabase
+          .from("daily_content")
+          .insert({ level, type: "words", content: parsed, date: today });
       }
     } catch {
       /* 무시 */
@@ -169,7 +162,6 @@ export default function LearnPage() {
     setGrammarLoading(true);
     setGrammar([]);
     const today = kstToday();
-
     const { data: cached } = await supabase
       .from("daily_content")
       .select("content")
@@ -177,14 +169,12 @@ export default function LearnPage() {
       .eq("type", "grammar")
       .eq("date", today)
       .maybeSingle();
-
     if (cached?.content) {
       setGrammar(cached.content as Grammar[]);
       setGrammarSource("cache");
       setGrammarLoading(false);
       return;
     }
-
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -197,12 +187,9 @@ export default function LearnPage() {
         const parsed: Grammar[] = JSON.parse(match[0]);
         setGrammar(parsed);
         setGrammarSource("ai");
-        await supabase.from("daily_content").insert({
-          level,
-          type: "grammar",
-          content: parsed,
-          date: today,
-        });
+        await supabase
+          .from("daily_content")
+          .insert({ level, type: "grammar", content: parsed, date: today });
       }
     } catch {
       /* 무시 */
@@ -210,6 +197,98 @@ export default function LearnPage() {
       setGrammarLoading(false);
     }
   }
+
+  // 단어 저장
+  async function saveWord(w: Word, idx: number) {
+    if (!user) {
+      router.push("/auth");
+      return;
+    }
+    const key = `word-${idx}`;
+    setSavingMap((m) => ({ ...m, [key]: "saving" }));
+    const content = `단어: ${w.word}\n읽기: ${w.reading}\n뜻: ${w.meaning}\n품사: ${w.category}\n예문: ${w.example}\n번역: ${w.example_kr}`;
+    const { error } = await supabase.from("saved_words").insert({
+      user_id: user.id,
+      word: w.word,
+      reading: w.reading,
+      meaning: w.meaning,
+      level,
+      content,
+    });
+    setSavingMap((m) => ({ ...m, [key]: error ? "idle" : "saved" }));
+  }
+
+  // 문법 저장
+  async function saveGrammar(g: Grammar, idx: number) {
+    if (!user) {
+      router.push("/auth");
+      return;
+    }
+    const key = `grammar-${idx}`;
+    setSavingMap((m) => ({ ...m, [key]: "saving" }));
+    const content = `패턴: ${g.pattern}\n의미: ${g.meaning}\n접속: ${g.usage}\n예문: ${g.example}\n읽기: ${g.example_reading}\n번역: ${g.example_kr}`;
+    const { error } = await supabase.from("saved_grammar").insert({
+      user_id: user.id,
+      pattern: g.pattern,
+      meaning: g.meaning,
+      level,
+      content,
+    });
+    setSavingMap((m) => ({ ...m, [key]: error ? "idle" : "saved" }));
+  }
+
+  function SaveButton({
+    keyStr,
+    onSave,
+  }: {
+    keyStr: string;
+    onSave: () => void;
+  }) {
+    const state = savingMap[keyStr] ?? "idle";
+    if (!user)
+      return (
+        <Link
+          href="/auth"
+          className="text-xs text-white/30 hover:text-pink-400 transition-colors"
+          onClick={(e) => e.stopPropagation()}
+        >
+          🔐 로그인 후 저장
+        </Link>
+      );
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onSave();
+        }}
+        disabled={state !== "idle"}
+        className={`text-xs px-3 py-1.5 rounded-full font-semibold transition-all duration-200 ${
+          state === "saved"
+            ? "bg-emerald-500/20 text-emerald-400 cursor-default"
+            : state === "saving"
+              ? "bg-white/10 text-white/40 cursor-wait"
+              : "bg-white/10 text-white/50 hover:bg-pink-500/20 hover:text-pink-400"
+        }`}
+      >
+        {state === "saved"
+          ? "✓ 저장됨"
+          : state === "saving"
+            ? "저장 중..."
+            : "🔖 저장"}
+      </button>
+    );
+  }
+
+  const SourceBadge = ({ source }: { source: "cache" | "ai" | null }) => {
+    if (!source) return null;
+    return (
+      <span
+        className={`text-xs px-2 py-0.5 rounded-full ${source === "cache" ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"}`}
+      >
+        {source === "cache" ? "⚡ 캐시" : "🤖 AI 생성"}
+      </span>
+    );
+  };
 
   const Loading = ({ color }: { color: string }) => (
     <div className="flex flex-col items-center gap-4 py-16">
@@ -227,17 +306,6 @@ export default function LearnPage() {
       </p>
     </div>
   );
-
-  const SourceBadge = ({ source }: { source: "cache" | "ai" | null }) => {
-    if (!source) return null;
-    return (
-      <span
-        className={`text-xs px-2 py-0.5 rounded-full ${source === "cache" ? "bg-emerald-500/20 text-emerald-400" : "bg-amber-500/20 text-amber-400"}`}
-      >
-        {source === "cache" ? "⚡ 캐시" : "🤖 AI 생성"}
-      </span>
-    );
-  };
 
   return (
     <div style={{ minHeight: "100vh", width: "100%" }}>
@@ -339,7 +407,7 @@ export default function LearnPage() {
           </button>
         </div>
 
-        {/* 단어 */}
+        {/* 단어 목록 */}
         {tab === "words" && (
           <>
             {wordsLoading && <Loading color={info?.color} />}
@@ -377,9 +445,15 @@ export default function LearnPage() {
                       <p className="text-white/70 text-sm font-jp">
                         {w.example}
                       </p>
-                      <p className="text-white/40 text-xs mt-1">
+                      <p className="text-white/40 text-xs mt-1 mb-3">
                         {w.example_kr}
                       </p>
+                      <div className="flex justify-end">
+                        <SaveButton
+                          keyStr={`word-${i}`}
+                          onSave={() => saveWord(w, i)}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
@@ -387,7 +461,7 @@ export default function LearnPage() {
           </>
         )}
 
-        {/* 문법 */}
+        {/* 문법 목록 */}
         {tab === "grammar" && (
           <>
             {grammarLoading && <Loading color={info?.color} />}
@@ -435,6 +509,12 @@ export default function LearnPage() {
                         <p className="text-white/40 text-xs mt-1">
                           {g.example_kr}
                         </p>
+                      </div>
+                      <div className="flex justify-end pt-1">
+                        <SaveButton
+                          keyStr={`grammar-${i}`}
+                          onSave={() => saveGrammar(g, i)}
+                        />
                       </div>
                     </div>
                   )}

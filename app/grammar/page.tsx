@@ -207,7 +207,7 @@ export default function GrammarPage() {
               placeholder="예: te iru → ている, ~たら, 진행형..."
               className="flex-1 glass border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/30 bg-transparent input-glow font-jp text-sm min-w-0"
             />
-            <select
+            {/* <select
               value={searchLevel}
               onChange={(e) => setSearchLevel(e.target.value)}
               className="glass border border-white/20 rounded-xl px-2 py-3 text-white bg-transparent cursor-pointer text-sm flex-shrink-0"
@@ -217,7 +217,7 @@ export default function GrammarPage() {
                   {l}
                 </option>
               ))}
-            </select>
+            </select> */}
             <button
               onClick={() => search()}
               disabled={loading || !grammar.trim()}
